@@ -3,7 +3,7 @@ let
   env = bundlerEnv {
     name = "PROJECT-bundler-env";
     inherit RUBY;
-    gemfile  = ./Gemfile;
+    gemfile  = GEMFILE;
     lockfile = LOCKFILE;
     gemset   = GEMSET;
   };

@@ -1,92 +1,99 @@
-#!/usr/bin/env ruby
+#! /usr/bin/env ruby
 
 require 'optparse'
 require 'tmpdir'
 require 'pathname'
 
+ENV.delete('SSL_CERT_FILE') if ENV['SSL_CERT_FILE'] == '/no-cert-file.crt'
+
 require_relative '../lib/bundix'
+require_relative '../lib/bundix/version'
 
-options = {
-  ruby: 'ruby',
-  bundle_pack_path: 'vendor/bundle',
-  lockfile: 'Gemfile.lock',
-  gemset: 'gemset.nix'
-}
+class Bundix
+  OPTIONS = {
+    ruby: 'ruby',
+    gemset: 'gemset.nix',
+    cache: false,
+    quiet: false,
+    development_dependencies: false,
+    groups: []
+  }
 
-op = OptionParser.new do |o|
-  o.on '-m', '--magic', 'lock, pack, and write dependencies' do
-    options[:magic] = true
+  Bundler.settings[:frozen] = true
+
+  op = OptionParser.new do |o|
+    o.on '--ruby=ruby', 'ruby version to use for init, defaults to latest' do |value|
+      OPTIONS[:ruby] = value
+    end
+
+    o.on '-i', '--init', "initialize a new shell.nix for nix-shell (won't overwrite old ones)" do
+      OPTIONS[:init] = true
+    end
+
+    o.on '--gemset=gemset.nix', 'path to the gemset.nix' do |value|
+      OPTIONS[:gemset] = File.expand_path(value)
+    end
+
+    o.on '--gemfile=Gemfile', 'path to the Gemfile' do |value|
+      Bundler.settings[:gemfile] = Pathname(value)
+    end
+
+    o.on '--lockfile=Gemfile.lock', 'path to the Gemfile.lock' do |value|
+      Bundler.settings[:lockfile] = Pathname(value)
+    end
+
+    o.on '-l', '--lock', 'create Gemfile.lock for given groups' do |groups|
+      Bundler.settings[:frozen] = false
+    end
+
+    o.on '-c', '--cache', 'resolve dependencies from cache' do
+      OPTIONS[:cache] = true
+    end
+
+    o.on '-g', '--groups [GROUP1,GROUP2]', Array, 'only use these groups for the lockfile' do |groups|
+      OPTIONS[:groups].concat groups.map(&:to_sym)
+    end
+
+    o.on '--development-dependencies', 'include development dependencies from gemspecs in the set' do
+      OPTIONS[:development_dependencies] = true
+    end
+
+    o.on '-q', '--quiet', 'only output errors' do
+      OPTIONS[:quiet] = true
+    end
+
+    o.on '-v', '--version', 'show the version of bundix' do
+      puts Bundix::VERSION
+      exit
+    end
   end
 
-  o.on '--ruby=ruby', 'ruby version to use for magic and init, defaults to latest' do |value|
-    options[:ruby] = value
+  op.parse!
+  $VERBOSE = !OPTIONS[:quiet]
+
+  if OPTIONS[:init]
+    if File.file?('shell.nix')
+      warn "won't override existing shell.nix"
+    else
+      shell_nix = File.read(File.expand_path('../template/shell.nix', __dir__))
+      shell_nix.gsub!('PROJECT', File.basename(Dir.pwd))
+      shell_nix.gsub!('RUBY', OPTIONS[:ruby])
+      shell_nix.gsub!('GEMFILE', "./#{Bundler.settings[:gemfile].relative_path_from(Pathname('./'))}")
+      shell_nix.gsub!('LOCKFILE', "./#{Bundler.settings[:lockfile].relative_path_from(Pathname('./'))}")
+      shell_nix.gsub!('GEMSET', "./#{Pathname(OPTIONS[:gemset]).relative_path_from(Pathname('./'))}")
+      File.write('shell.nix', shell_nix)
+    end
   end
 
-  o.on '--bundle-pack-path=vendor/bundle', "path to pack the magic" do |value|
-    options[:bundle_pack_path] = value
+  gemset = Bundix.new(OPTIONS).convert
+
+  tempfile = Tempfile.new('gemset.nix', encoding: 'UTF-8')
+  begin
+    Bundix.object2nix(gemset, 2, tempfile)
+    tempfile.flush
+    FileUtils.cp(tempfile.path, OPTIONS[:gemset])
+  ensure
+    tempfile.close!
+    tempfile.unlink
   end
-
-  o.on '-i', '--init', "initialize a new shell.nix for nix-shell (won't overwrite old ones)" do
-    options[:init] = true
-  end
-
-  o.on '--gemset=gemset.nix', 'path to the gemset.nix' do |value|
-    options[:gemset] = File.expand_path(value)
-  end
-
-  o.on '--lockfile=Gemfile.lock', 'path to the Gemfile.lock' do |value|
-    options[:lockfile] = File.expand_path(value)
-  end
-
-  o.on '-d', '--dependencies', 'include gem dependencies' do
-    options[:deps] = true
-  end
-
-  o.on '-q', '--quiet', 'only output errors' do
-    options[:quiet] = true
-  end
-
-  o.on '-v', '--version', 'show the version of bundix' do
-    puts Bundix::VERSION
-    exit
-  end
-end
-
-op.parse!
-$VERBOSE = !options[:quiet]
-
-if options[:magic]
-  fail unless system(
-    Bundix::NIX_SHELL, '-p', options[:ruby],
-    "bundler.override { ruby = #{options[:ruby]}; }",
-    "--command", "bundle lock --lockfile=#{options[:lockfile]}")
-  fail unless system(
-    Bundix::NIX_SHELL, '-p', options[:ruby],
-    "bundler.override { ruby = #{options[:ruby]}; }",
-    "--command", "bundle pack --all --path #{options[:bundle_pack_path]}")
-end
-
-if options[:init]
-  if File.file?('shell.nix')
-    warn "won't override existing shell.nix"
-  else
-    shell_nix = File.read(File.expand_path('../template/shell.nix', __dir__))
-    shell_nix.gsub!('PROJECT', File.basename(Dir.pwd))
-    shell_nix.gsub!('RUBY', options[:ruby])
-    shell_nix.gsub!('LOCKFILE', "./#{Pathname(options[:lockfile]).relative_path_from(Pathname('./'))}")
-    shell_nix.gsub!('GEMSET', "./#{Pathname(options[:gemset]).relative_path_from(Pathname('./'))}")
-    File.write('shell.nix', shell_nix)
-  end
-end
-
-gemset = Bundix.new(options).convert
-
-tempfile = Tempfile.new('gemset.nix', encoding: 'UTF-8')
-begin
-  Bundix.object2nix(gemset, 2, tempfile)
-  tempfile.flush
-  FileUtils.cp(tempfile.path, options[:gemset])
-ensure
-  tempfile.close!
-  tempfile.unlink
 end

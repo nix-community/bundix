@@ -11,5 +11,5 @@ let
   };
 in stdenv.mkDerivation {
   name = "bundix";
-  buildInputs = [bundix];
+  buildInputs = [bundler bundix];
 }

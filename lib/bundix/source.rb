@@ -20,7 +20,7 @@ class Bundix
       warn "Downloading #{file} from #{url}"
       uri = URI(url)
       open_options = {}
-      if uri.user && uri.password
+      if uri.user
         open_options[:http_basic_authentication] = [uri.user, uri.password]
         uri.user = nil
         uri.password = nil

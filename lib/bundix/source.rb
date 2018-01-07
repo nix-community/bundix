@@ -1,17 +1,5 @@
 class Bundix
-  class Source < Struct.new(:spec)
-    def convert
-      case spec.source
-      when Bundler::Source::Rubygems
-        convert_rubygems
-      when Bundler::Source::Git
-        convert_git
-      else
-        pp spec
-        fail 'unkown bundler source'
-      end
-    end
-
+  class Fetcher
     def sh(*args, &block)
       Bundix.sh(*args, &block)
     end
@@ -56,12 +44,16 @@ class Bundix
       ENV['HOME'] = home
     end
 
+    def format_hash(hash)
+      sh(NIX_HASH, '--type', 'sha256', '--to-base32', hash)[SHA256_32]
+    end
+
     def fetch_local_hash(spec)
       spec.source.caches.each do |cache|
         path = File.join(cache, "#{spec.name}-#{spec.version}.gem")
         next unless File.file?(path)
         hash = nix_prefetch_url(path)[SHA256_32]
-        return hash if hash
+        return format_hash(hash) if hash
       end
 
       nil
@@ -70,7 +62,7 @@ class Bundix
     def fetch_remotes_hash(spec, remotes)
       remotes.each do |remote|
         hash = fetch_remote_hash(spec, remote)
-        return remote, hash if hash
+        return remote, format_hash(hash) if hash
       end
 
       nil
@@ -86,13 +78,26 @@ class Bundix
       puts e.backtrace
       nil
     end
+  end
+
+  class Source < Struct.new(:spec, :fetcher)
+    def convert
+      case spec.source
+      when Bundler::Source::Rubygems
+        convert_rubygems
+      when Bundler::Source::Git
+        convert_git
+      else
+        pp spec
+        fail 'unkown bundler source'
+      end
+    end
 
     def convert_rubygems
       remotes = spec.source.remotes.map{|remote| remote.to_s.sub(/\/+$/, '') }
-      hash = fetch_local_hash(spec)
-      remote, hash = fetch_remotes_hash(spec, remotes) unless hash
+      hash = fetcher.fetch_local_hash(spec)
+      remote, hash = fetcher.fetch_remotes_hash(spec, remotes) unless hash
       fail "couldn't fetch hash for #{spec.name}-#{spec.version}" unless hash
-      hash = sh(NIX_HASH, '--type', 'sha256', '--to-base32', hash)[SHA256_32]
       puts "#{hash} => #{spec.name}-#{spec.version}.gem" if $VERBOSE
 
       { type: 'gem',
@@ -103,7 +108,7 @@ class Bundix
     def convert_git
       revision = spec.source.options.fetch('revision')
       uri = spec.source.options.fetch('uri')
-      output = nix_prefetch_git(uri, revision)
+      output = fetcher.nix_prefetch_git(uri, revision)
       # FIXME: this is a hack, we should separate $stdout/$stderr in the sh call
       hash = JSON.parse(output[/({[^}]+})\s*\z/m])['sha256']
       fail "couldn't fetch hash for #{spec.name}-#{spec.version}" unless hash

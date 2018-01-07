@@ -25,8 +25,11 @@ class Bundix
 
   attr_reader :options
 
+  attr_accessor :fetcher
+
   def initialize(options)
     @options = { quiet: false, tempfile: nil }.merge(options)
+    @fetcher = Fetcher.new
   end
 
   def convert
@@ -45,7 +48,7 @@ class Bundix
   end
 
   def convert_spec(spec, cache)
-    {spec.name => {version: spec.version.to_s, source: Source.new(spec).convert}}
+    {spec.name => {version: spec.version.to_s, source: Source.new(spec, fetcher).convert}}
   rescue => ex
     warn "Skipping #{spec.name}: #{ex}"
     puts ex.backtrace

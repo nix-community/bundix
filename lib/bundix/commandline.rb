@@ -146,10 +146,14 @@ class Bundix
       Bundix.new(options).convert
     end
 
+    def object2nix(obj)
+      Nixer.new(obj).serialize
+    end
+
     def save_gemset(gemset)
       tempfile = Tempfile.new('gemset.nix', encoding: 'UTF-8')
       begin
-        Bundix.object2nix(gemset, 2, tempfile)
+        tempfile.write(object2nix(gemset))
         tempfile.flush
         FileUtils.cp(tempfile.path, options[:gemset])
       ensure

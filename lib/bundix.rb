@@ -6,6 +6,7 @@ require 'pp'
 
 require_relative 'bundix/version'
 require_relative 'bundix/source'
+require_relative 'bundix/nixer'
 
 class Bundix
   NIX_INSTANTIATE = 'nix-instantiate'

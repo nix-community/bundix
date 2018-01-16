@@ -89,35 +89,6 @@ class Bundix
     Bundler::LockfileParser.new(File.read(options[:lockfile]))
   end
 
-  def self.object2nix(obj, level = 2, out = '')
-    case obj
-    when Hash
-      out << "{\n"
-      obj.sort_by{|k, v| k.to_s.downcase }.each do |(k, v)|
-        out << ' ' * level
-        if k.to_s =~ /^[a-zA-Z_-]+[a-zA-Z0-9_-]*$/
-          out << k.to_s
-        else
-          object2nix(k, level + 2, out)
-        end
-        out << ' = '
-        object2nix(v, level + 2, out)
-        out << (v.is_a?(Hash) ? "\n" : ";\n")
-      end
-      out << (' ' * (level - 2)) << (level == 2 ? '}' : '};')
-    when Array
-      out << '[' << obj.sort.map{|o| o.to_str.dump }.join(' ') << ']'
-    when String
-      out << obj.dump
-    when Symbol
-      out << obj.to_s.dump
-    when true, false
-      out << obj.to_s
-    else
-      fail obj.inspect
-    end
-  end
-
   def self.sh(*args, &block)
     out, status = Open3.capture2e(*args)
     unless block_given? ? block.call(status, out) : status.success?

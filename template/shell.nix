@@ -1,13 +1,13 @@
 with (import <nixpkgs> {});
 let
   env = bundlerEnv {
-    name = "PROJECT-bundler-env";
-    inherit RUBY;
-    gemfile  = ./Gemfile;
-    lockfile = LOCKFILE;
-    gemset   = GEMSET;
+    name = "<%= project %>-bundler-env";
+    inherit <%= ruby %>;
+    gemfile  = <%= gemfile_path %>;
+    lockfile = <%= lockfile_path %>;
+    gemset   = <%= gemset_path %>;
   };
 in stdenv.mkDerivation {
-  name = "PROJECT";
+  name = "<%= project %>";
   buildInputs = [ env ];
 }

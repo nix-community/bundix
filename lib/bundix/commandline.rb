@@ -4,6 +4,7 @@ require 'tempfile'
 require 'pathname'
 
 require_relative '../bundix'
+require_relative 'shell_nix_context'
 
 class Bundix
   class CommandLine
@@ -14,6 +15,7 @@ class Bundix
       gemfile: 'Gemfile',
       lockfile: 'Gemfile.lock',
       gemset: 'gemset.nix',
+      project: File.basename(Dir.pwd)
     }
 
     def self.run
@@ -52,16 +54,16 @@ class Bundix
           options[:init] = true
         end
 
-        o.on "--gemset=#{options[:gemset]}", 'path to the gemset.nix' do |value|
-          options[:gemset] = File.expand_path(value)
+        o.on "--gemfile=#{options[:gemfile]}", 'path to the Gemfile' do |value|
+          options[:gemfile] = File.expand_path(value)
         end
 
         o.on "--lockfile=#{options[:lockfile]}", 'path to the Gemfile.lock' do |value|
           options[:lockfile] = File.expand_path(value)
         end
 
-        o.on '--gemfile=Gemfile', 'path to the Gemfile' do |value|
-          options[:gemfile] = File.expand_path(value)
+        o.on "--gemset=#{options[:gemset]}", 'path to the gemset.nix' do |value|
+          options[:gemset] = File.expand_path(value)
         end
 
         o.on '-d', '--dependencies', 'include gem dependencies (deprecated)' do
@@ -109,12 +111,8 @@ class Bundix
     end
 
     def shell_nix_string
-      shell_nix = File.read(File.expand_path('../../template/shell.nix', __dir__))
-      shell_nix.gsub!('PROJECT', File.basename(Dir.pwd))
-      shell_nix.gsub!('RUBY', options[:ruby])
-      shell_nix.gsub!('LOCKFILE', "./#{Pathname(options[:lockfile]).relative_path_from(Pathname('./'))}")
-      shell_nix.gsub!('GEMSET', "./#{Pathname(options[:gemset]).relative_path_from(Pathname('./'))}")
-      shell_nix
+      tmpl = ERB.new(File.read(File.expand_path('../../template/shell.nix', __dir__)))
+      tmpl.result(ShellNixContext.from_hash(options).bind)
     end
 
     def handle_init

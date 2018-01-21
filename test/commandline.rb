@@ -18,14 +18,14 @@ class CommandLineTest < Minitest::Test
 with (import <nixpkgs> {});
 let
   env = bundlerEnv {
-    name = "bundix-bundler-env";
+    name = "test-project-bundler-env";
     inherit test-ruby;
-    gemfile  = ./Gemfile;
+    gemfile  = ./test-gemfile;
     lockfile = ./test-lockfile;
     gemset   = ./test-gemset;
   };
 in stdenv.mkDerivation {
-  name = "bundix";
+  name = "test-project";
   buildInputs = [ env ];
 }
 SHELLNIX

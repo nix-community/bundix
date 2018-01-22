@@ -54,16 +54,16 @@ class Bundix
           options[:init] = true
         end
 
-        o.on "--gemfile=#{options[:gemfile]}", 'path to the Gemfile' do |value|
-          options[:gemfile] = File.expand_path(value)
+        o.on "--gemset=#{options[:gemset]}", 'path to the gemset.nix' do |value|
+          options[:gemset] = File.expand_path(value)
         end
 
         o.on "--lockfile=#{options[:lockfile]}", 'path to the Gemfile.lock' do |value|
           options[:lockfile] = File.expand_path(value)
         end
 
-        o.on "--gemset=#{options[:gemset]}", 'path to the gemset.nix' do |value|
-          options[:gemset] = File.expand_path(value)
+        o.on "--gemfile=#{options[:gemfile]}", 'path to the Gemfile' do |value|
+          options[:gemfile] = File.expand_path(value)
         end
 
         o.on '-d', '--dependencies', 'include gem dependencies (deprecated)' do

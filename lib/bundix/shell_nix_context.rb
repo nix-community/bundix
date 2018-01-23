@@ -1,8 +1,7 @@
 class Bundix
   class ShellNixContext < Struct.new(:project, :ruby, :gemfile, :lockfile, :gemset)
     def self.from_hash(hash)
-      p, r, gf, l, gs = hash.values_at(:project, :ruby, :gemfile, :lockfile, :gemset)
-      self.new(p,r,gf,l,gs)
+      new(*hash.values_at(*members))
     end
 
     def bind

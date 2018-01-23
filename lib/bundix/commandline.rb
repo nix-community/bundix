@@ -110,9 +110,13 @@ class Bundix
       end
     end
 
+    def shell_nix_context
+      ShellNixContext.from_hash(options)
+    end
+
     def shell_nix_string
-      tmpl = ERB.new(File.read(File.expand_path('../../template/shell.nix', __dir__)))
-      tmpl.result(ShellNixContext.from_hash(options).bind)
+      tmpl = ERB.new(File.read(File.expand_path('../../template/shell-nix.erb', __dir__)))
+      tmpl.result(shell_nix_context.bind)
     end
 
     def handle_init

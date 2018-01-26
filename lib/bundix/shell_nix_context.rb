@@ -9,7 +9,7 @@ class Bundix
     end
 
     def path_for(file)
-      "./#{Pathname(file).relative_path_from(Pathname('./'))}"
+      Nixer.serialize(Pathname(file).relative_path_from(Pathname('./')))
     end
 
     def gemfile_path

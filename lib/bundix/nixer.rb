@@ -2,6 +2,10 @@ require 'erb'
 
 class Bundix
   class Nixer
+    def self.serialize(obj)
+      new(obj).serialize
+    end
+
     attr_reader :level, :obj
 
     SET_T = ERB.new(File.read(File.expand_path("../../template/nixer/set.erb", __dir__)).chomp)

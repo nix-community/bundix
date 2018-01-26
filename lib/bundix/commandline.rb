@@ -149,7 +149,7 @@ class Bundix
     end
 
     def object2nix(obj)
-      Nixer.new(obj).serialize
+      Nixer.serialize(obj)
     end
 
     def save_gemset(gemset)

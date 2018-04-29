@@ -5,7 +5,7 @@ let
     gemName = "minitest";
     type = "gem";
     version = "5.10.1";
-    sha256 = "1yk2m8sp0p5m1niawa3ncg157a4i0594cg7z91rzjxv963rzrwab";
+    source.sha256 = "1yk2m8sp0p5m1niawa3ncg157a4i0594cg7z91rzjxv963rzrwab";
     gemPath = [];
   };
 
@@ -14,7 +14,7 @@ let
     gemName = "rake";
     type = "gem";
     version = "12.0.0";
-    sha256 = "01j8fc9bqjnrsxbppncai05h43315vmz9fwg28qdsgcjw9ck1d7n";
+    source.sha256 = "01j8fc9bqjnrsxbppncai05h43315vmz9fwg28qdsgcjw9ck1d7n";
     gemPath = [];
   };
 in

@@ -158,6 +158,7 @@ class Bundix
         tempfile.write(object2nix(gemset))
         tempfile.flush
         FileUtils.cp(tempfile.path, options[:gemset])
+        FileUtils.chmod(0644, options[:gemset])
       ensure
         tempfile.close!
         tempfile.unlink

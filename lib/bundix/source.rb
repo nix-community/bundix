@@ -50,7 +50,7 @@ class Bundix
 
     def fetch_local_hash(spec)
       spec.source.caches.each do |cache|
-        path = File.join(cache, "#{spec.name}-#{spec.version}.gem")
+        path = File.join(cache, "#{spec.full_name}.gem")
         next unless File.file?(path)
         hash = nix_prefetch_url(path)[SHA256_32]
         return format_hash(hash) if hash
@@ -69,7 +69,7 @@ class Bundix
     end
 
     def fetch_remote_hash(spec, remote)
-      uri = "#{remote}/gems/#{spec.name}-#{spec.version}.gem"
+      uri = "#{remote}/gems/#{spec.full_name}.gem"
       result = nix_prefetch_url(uri)
       return unless result
       result[SHA256_32]
@@ -97,8 +97,8 @@ class Bundix
       remotes = spec.source.remotes.map{|remote| remote.to_s.sub(/\/+$/, '') }
       hash = fetcher.fetch_local_hash(spec)
       remote, hash = fetcher.fetch_remotes_hash(spec, remotes) unless hash
-      fail "couldn't fetch hash for #{spec.name}-#{spec.version}" unless hash
-      puts "#{hash} => #{spec.name}-#{spec.version}.gem" if $VERBOSE
+      fail "couldn't fetch hash for #{spec.full_name}" unless hash
+      puts "#{hash} => #{spec.full_name}.gem" if $VERBOSE
 
       { type: 'gem',
         remotes: (remote ? [remote] : remotes),
@@ -111,7 +111,7 @@ class Bundix
       output = fetcher.nix_prefetch_git(uri, revision)
       # FIXME: this is a hack, we should separate $stdout/$stderr in the sh call
       hash = JSON.parse(output[/({[^}]+})\s*\z/m])['sha256']
-      fail "couldn't fetch hash for #{spec.name}-#{spec.version}" unless hash
+      fail "couldn't fetch hash for #{spec.full_name}" unless hash
       puts "#{hash} => #{uri}" if $VERBOSE
 
       { type: 'git',

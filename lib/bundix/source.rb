@@ -22,7 +22,7 @@ class Bundix
     end
 
     def nix_prefetch_url(url)
-      dir = File.expand_path('~/.cache/bundix')
+      dir = File.join(ENV['XDG_CACHE_HOME'] || "#{ENV['HOME']}/.cache", 'bundix')
       FileUtils.mkdir_p dir
       file = File.join(dir, url.gsub(/[^\w-]+/, '_'))
 

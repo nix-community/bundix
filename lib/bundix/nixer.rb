@@ -1,9 +1,50 @@
 require 'erb'
 
+class Hash
+  # regretfully, duckpunching
+  def <=>(other)
+    if other.is_a?(Hash)
+      larray = to_a.sort{|l,r| Bundix::Nixer.order(l,r)}
+      rarray = other.to_a.sort{|l,r| Bundix::Nixer.order(l,r)}
+      larray <=> rarray
+    else
+      nil
+    end
+  end
+end
+
 class Bundix
   class Nixer
-    def self.serialize(obj)
-      new(obj).serialize
+    class << self
+      def serialize(obj)
+        new(obj).serialize
+      end
+
+      def order(left, right)
+        if right.is_a?(left.class)
+          if right.respond_to?(:<=>)
+            cmp = right <=> left
+            return -1 * (cmp) unless cmp.nil?
+          end
+        end
+
+        if left.is_a?(right.class)
+          if left.respond_to?(:<=>)
+            cmp = right <=> left
+            if cmp.nil?
+              return class_order(left, right)
+            else
+              return cmp
+            end
+          end
+        end
+
+        return class_order(left, right)
+      end
+
+      def class_order(left, right)
+        left.class.name <=> right.class.name # like Erlang
+      end
     end
 
     attr_reader :level, :obj
@@ -56,7 +97,7 @@ class Bundix
       when true, false
         obj.to_s
       else
-        fail "Cannot convert to nix #{obj.inspect}"
+        fail "Cannot convert to nix: #{obj.inspect}"
       end
     end
   end

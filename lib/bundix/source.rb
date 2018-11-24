@@ -87,10 +87,19 @@ class Bundix
         convert_rubygems
       when Bundler::Source::Git
         convert_git
+      when Bundler::Source::Path
+        convert_path
       else
         pp spec
         fail 'unkown bundler source'
       end
+    end
+
+    def convert_path
+      {
+        type: "path",
+        path: spec.source.path
+      }
     end
 
     def convert_rubygems

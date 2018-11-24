@@ -1,1 +1,1 @@
-[<% obj.sort.each_with_index do |o, n|%><%if n > 0%> <%end%><%= sub(o) %><%end%>]
+[<% obj.sort{|l,r| Nixer.order(l,r)}.each_with_index do |o, n|%><%if n > 0%> <%end%><%= sub(o) %><%end%>]

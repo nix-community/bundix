@@ -31,6 +31,7 @@ class Bundix
     def run
       parse_options
       handle_magic
+      handle_lock
       handle_init
       gemset = build_gemset
       save_gemset(gemset)

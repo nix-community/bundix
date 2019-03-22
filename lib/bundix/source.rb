@@ -75,7 +75,7 @@ class Bundix
     def nix_prefetch_git(uri, revision)
       home = ENV['HOME']
       ENV['HOME'] = '/homeless-shelter'
-      sh(NIX_PREFETCH_GIT, '--url', uri, '--rev', revision, '--hash', 'sha256', '--leave-dotGit')
+      sh(NIX_PREFETCH_GIT, '--url', uri, '--rev', revision, '--hash', 'sha256', '--leave-dotGit', '--fetch-submodules')
     ensure
       ENV['HOME'] = home
     end
@@ -163,7 +163,7 @@ class Bundix
         url: uri.to_s,
         rev: revision,
         sha256: hash,
-        fetchSubmodules: false }
+        fetchSubmodules: true }
     end
   end
 end

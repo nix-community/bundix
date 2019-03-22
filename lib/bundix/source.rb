@@ -72,10 +72,18 @@ class Bundix
       nil
     end
 
-    def nix_prefetch_git(uri, revision)
+    def nix_prefetch_git(uri, revision, submodules: false)
       home = ENV['HOME']
       ENV['HOME'] = '/homeless-shelter'
-      sh(NIX_PREFETCH_GIT, '--url', uri, '--rev', revision, '--hash', 'sha256', '--leave-dotGit')
+
+      args = []
+      args << '--url' << uri
+      args << '--rev' << revision
+      args << '--hash' << 'sha256'
+      args << '--leave-dotGit'
+      args << '--fetch-submodules' if submodules
+
+      sh(NIX_PREFETCH_GIT, *args)
     ensure
       ENV['HOME'] = home
     end
@@ -153,7 +161,8 @@ class Bundix
     def convert_git
       revision = spec.source.options.fetch('revision')
       uri = spec.source.options.fetch('uri')
-      output = fetcher.nix_prefetch_git(uri, revision)
+      submodules = !!spec.source.submodules
+      output = fetcher.nix_prefetch_git(uri, revision, submodules: submodules)
       # FIXME: this is a hack, we should separate $stdout/$stderr in the sh call
       hash = JSON.parse(output[/({[^}]+})\s*\z/m])['sha256']
       fail "couldn't fetch hash for #{spec.full_name}" unless hash
@@ -163,7 +172,7 @@ class Bundix
         url: uri.to_s,
         rev: revision,
         sha256: hash,
-        fetchSubmodules: false }
+        fetchSubmodules: submodules }
     end
   end
 end

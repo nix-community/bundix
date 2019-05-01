@@ -163,7 +163,7 @@ class Bundix
     path = File.expand_path(options[:gemset])
     return {} unless File.file?(path)
     json = Bundix.sh(
-      NIX_INSTANTIATE, '--eval', '-E', "builtins.toJSON(import #{path})")
+      NIX_INSTANTIATE, '--eval', '-E', %(builtins.toJSON (import "#{path}")))
     JSON.parse(json.strip.gsub(/\\"/, '"')[1..-2])
   end
 

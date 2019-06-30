@@ -1,14 +1,14 @@
+# frozen_string_literal: true
+
 require 'erb'
 
 class Hash
   # regretfully, duckpunching
   def <=>(other)
     if other.is_a?(Hash)
-      larray = to_a.sort{|l,r| Bundix::Nixer.order(l,r)}
-      rarray = other.to_a.sort{|l,r| Bundix::Nixer.order(l,r)}
+      larray = to_a.sort { |l, r| Bundix::Nixer.order(l, r) }
+      rarray = other.to_a.sort { |l, r| Bundix::Nixer.order(l, r) }
       larray <=> rarray
-    else
-      nil
     end
   end
 end
@@ -24,7 +24,7 @@ class Bundix
         if right.is_a?(left.class)
           if right.respond_to?(:<=>)
             cmp = right <=> left
-            return -1 * (cmp) unless cmp.nil?
+            return -1 * cmp unless cmp.nil?
           end
         end
 
@@ -39,7 +39,7 @@ class Bundix
           end
         end
 
-        return class_order(left, right)
+        class_order(left, right)
       end
 
       def class_order(left, right)
@@ -49,8 +49,8 @@ class Bundix
 
     attr_reader :level, :obj
 
-    SET_T = ERB.new(File.read(File.expand_path("../../template/nixer/set.erb", __dir__)).chomp)
-    LIST_T = ERB.new(File.read(File.expand_path("../../template/nixer/list.erb", __dir__)).chomp)
+    SET_T = ERB.new(File.read(File.expand_path('../../template/nixer/set.erb', __dir__)).chomp)
+    LIST_T = ERB.new(File.read(File.expand_path('../../template/nixer/list.erb', __dir__)).chomp)
 
     def initialize(obj, level = 0)
       @obj = obj
@@ -80,24 +80,28 @@ class Bundix
     def serialize
       case obj
       when Hash
-        return SET_T.result(binding)
+        SET_T.result(binding)
       when Array
-        return LIST_T.result(binding)
+        LIST_T.result(binding)
       when String
         obj.dump
+      when Numeric
+        obj.to_s
       when Symbol
         obj.to_s.dump
       when Pathname
         str = obj.to_s
         if %r{/} !~ str
-          "./"+ str
+          './' + str
         else
           str
         end
       when true, false
         obj.to_s
+      when nil
+        'null'
       else
-        fail "Cannot convert to nix: #{obj.inspect}"
+        raise "Cannot convert to nix: #{obj.inspect}"
       end
     end
   end

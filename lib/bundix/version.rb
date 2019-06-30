@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Bundix
-  VERSION = '2.4.3'
+  VERSION = '3.0.0'
 end

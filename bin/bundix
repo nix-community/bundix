@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
-require_relative '../lib/bundix/commandline'
+require_relative '../lib/bundix/cli'
 
-Bundix::CommandLine.run
+Bundix::CLI.parser.parse

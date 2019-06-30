@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'lib/bundix/version'
 
 Gem::Specification.new do |s|
@@ -14,4 +16,5 @@ Gem::Specification.new do |s|
   s.bindir      = 'bin'
   s.executables = ['bundix']
   s.add_runtime_dependency 'bundler', '>= 1.11'
+  s.add_runtime_dependency 'main', '>= 6.2'
 end

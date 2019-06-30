@@ -1,14 +1,22 @@
-require 'minitest/autorun'
-require 'bundix'
+# frozen_string_literal: true
+
+# frozen_string_literal: true
+
+require_relative 'helper'
+
 require 'socket'
 require 'tmpdir'
 require 'base64'
+
+(ENV.keys - ['PATH']).each { |key| ENV.delete(key) }
+
+require_relative '../lib/bundix'
 
 class Bundix
   class FetcherTest < MiniTest::Test
     def test_download_with_credentials
       with_dir(bundler_credential: 'secret') do |dir|
-        with_server(returning_content: 'ok') do |port|
+        with_server(returning_content: 'ok') do |port, responses|
           file = 'some-file'
 
           assert_equal(File.realpath(dir), Bundler.root.to_s)
@@ -17,7 +25,8 @@ class Bundix
             Bundix::Fetcher.new.download(file, "http://127.0.0.1:#{port}/test")
           end
 
-          assert_includes(@request, "Authorization: Basic #{Base64.encode64('secret:').chomp}")
+          response = responses.pop(true).join
+          assert_includes(response, "Authorization: Basic #{Base64.encode64('secret:').chomp}")
           assert_equal(File.read(file), 'ok')
           assert_empty(out)
           assert_match(/^Downloading .* from http.*$/, err)
@@ -27,7 +36,7 @@ class Bundix
 
     def test_download_without_credentials
       with_dir(bundler_credential: nil) do |dir|
-        with_server(returning_content: 'ok') do |port|
+        with_server(returning_content: 'ok') do |port, responses|
           file = 'some-file'
 
           assert_equal(File.realpath(dir), Bundler.root.to_s)
@@ -36,13 +45,15 @@ class Bundix
             Bundix::Fetcher.new.download(file, "http://127.0.0.1:#{port}/test")
           end
 
-          refute_includes(@request, "Authorization:")
+          response = responses.pop(true).join
+          refute_includes(response, 'Authorization:')
           assert_equal(File.read(file), 'ok')
           assert_empty(out)
           assert_match(/^Downloading .* from http.*$/, err)
         end
       end
     end
+
     private
 
     def with_dir(bundler_credential:)
@@ -62,32 +73,38 @@ class Bundix
     end
 
     def with_server(returning_content:)
-      server = TCPServer.new('127.0.0.1', 0)
-      port_num = server.addr[1]
+      queue = Queue.new
 
-      @request = ''
-
-      Thread.abort_on_exception = true
       thr = Thread.new do
-        conn = server.accept
-        until (line = conn.readline) == "\r\n"
-          @request << line
+        TCPServer.open('127.0.0.1', 0) do |server|
+          Thread.current[:port_num] = server.addr[1]
+          Thread.current[:server] = server
+
+          conn = server.accept
+
+          conn.write(
+            "HTTP/1.1 200 OK\r\n" \
+              "Content-Length: #{returning_content.length}\r\n" \
+              "Content-Type: text/plain\r\n" \
+              "\r\n" \
+              "#{returning_content}"
+          )
+
+          lines = []
+          until (line = conn.readline) == "\r\n"
+            lines << line
+          end
+          queue << lines
+
+          conn.close
+          server.close
         end
-
-        conn.write(
-          "HTTP/1.1 200 OK\r\n" \
-          "Content-Length: #{returning_content.length}\r\n" \
-          "Content-Type: text/plain\r\n" \
-          "\r\n" \
-          "#{returning_content}",
-        )
-
-        conn.close
       end
 
-      yield(port_num)
+      sleep 0.001 until thr[:port_num]
+
+      Thread.new { yield(thr[:port_num], queue) }.join
     ensure
-      server.close
       thr.join
     end
   end

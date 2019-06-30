@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Bundix
   class ShellNixContext < Struct.new(:project, :ruby, :gemfile, :lockfile, :gemset)
     def self.from_hash(hash)

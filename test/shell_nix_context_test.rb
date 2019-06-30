@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+__END__
+
 require 'minitest/autorun'
 require 'bundix'
 

@@ -173,7 +173,7 @@ class Bundix
   end
 
   def self.sh(*args, &block)
-    out, status = Open3.capture2e(*args)
+    out, status = Open3.capture2(*args)
     unless block_given? ? block.call(status, out) : status.success?
       puts "$ #{args.join(' ')}" if $VERBOSE
       puts out if $VERBOSE

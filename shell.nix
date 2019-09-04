@@ -1,4 +1,6 @@
 with (import <nixpkgs> {});
+with builtins;
+
 let
   minitest = buildRubyGem {
     inherit ruby;

@@ -134,7 +134,7 @@ class Bundix
         convert_path
       else
         pp spec
-        fail 'unkown bundler source'
+        fail 'unknown bundler source'
       end
     end
 

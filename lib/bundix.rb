@@ -85,10 +85,19 @@ class Bundix
     {platforms: platforms}
   end
 
+  def version(spec)
+    platform = spec.platform
+    if platform == Gem::Platform::RUBY || platform.nil?
+      spec.version.to_s
+    else
+      "#{spec.version}-#{platform}"
+    end
+  end
+
   def convert_spec(spec, cache, dep_cache)
     {
       spec.name => {
-        version: spec.version.to_s,
+        version: version(spec),
         source: Source.new(spec, fetcher).convert
       }.merge(platforms(spec, dep_cache)).merge(groups(spec, dep_cache))
     }

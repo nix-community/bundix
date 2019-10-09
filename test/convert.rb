@@ -40,6 +40,7 @@ class TestConvert < Minitest::Test
     ) do |gemset|
       assert_equal("0.5.0", gemset.dig("bundler-audit", :version))
       assert_equal("0.19.4", gemset.dig("thor", :version))
+      assert_equal("0.4.4821-universal-darwin-14", gemset.dig("sorbet-static", :version))
     end
   end
 end

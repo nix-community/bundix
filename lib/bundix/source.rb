@@ -72,19 +72,15 @@ class Bundix
       nil
     end
 
-    def nix_prefetch_git(uri, revision, submodules: false)
-      home = ENV['HOME']
-      ENV['HOME'] = '/homeless-shelter'
-
-      args = []
-      args << '--url' << uri
-      args << '--rev' << revision
-      args << '--hash' << 'sha256'
-      args << '--fetch-submodules' if submodules
-
-      sh(NIX_PREFETCH_GIT, *args)
-    ensure
-      ENV['HOME'] = home
+    def fetch_ref(uri, revision)
+      Dir.mktmpdir do |dir|
+        system('git', 'clone', uri, dir)
+        Open3.popen2e('git', '-C', dir, 'name-rev', revision) do |_si, so, _se|
+          rev, ref = so.read.lines.first.split
+          ref.gsub!(%r{^remotes/origin/}, '')
+          return ref
+        end
+      end
     end
 
     def format_hash(hash)
@@ -161,16 +157,12 @@ class Bundix
       revision = spec.source.options.fetch('revision')
       uri = spec.source.options.fetch('uri')
       submodules = !!spec.source.submodules
-      output = fetcher.nix_prefetch_git(uri, revision, submodules: submodules)
-      # FIXME: this is a hack, we should separate $stdout/$stderr in the sh call
-      hash = JSON.parse(output[/({[^}]+})\s*\z/m])['sha256']
-      fail "couldn't fetch hash for #{spec.full_name}" unless hash
-      puts "#{hash} => #{uri}" if $VERBOSE
+      ref = fetcher.fetch_ref(uri, revision)
 
-      { type: 'git',
+      { type: 'builtins-git',
         url: uri.to_s,
         rev: revision,
-        sha256: hash,
+        ref: ref,
         fetchSubmodules: submodules }
     end
   end

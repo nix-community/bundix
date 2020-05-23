@@ -163,7 +163,7 @@ class Bundix
         url: uri.to_s,
         rev: revision,
         ref: ref,
-        fetchSubmodules: submodules }
+        submodules: submodules }
     end
   end
 end

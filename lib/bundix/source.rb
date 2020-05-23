@@ -74,11 +74,29 @@ class Bundix
 
     def fetch_ref(uri, revision)
       Dir.mktmpdir do |dir|
-        system('git', 'clone', uri, dir)
-        Open3.popen2e('git', '-C', dir, 'name-rev', revision) do |_si, so, _se|
+        sh(
+          Bundix::GIT,
+          'clone',
+          uri,
+          dir,
+        )
+        rescue => ex
+          puts ex
+          return nil
+
+        sh(
+          Bundix::GIT,
+          '-C',
+          dir,
+          'name-rev',
+          revision,
+        ) do |_si, so, _se|
           rev, ref = so.read.lines.first.split
           ref.gsub!(%r{^remotes/origin/}, '')
           return ref
+        rescue => ex
+          puts ex
+          nil
         end
       end
     end
@@ -158,6 +176,7 @@ class Bundix
       uri = spec.source.options.fetch('uri')
       submodules = !!spec.source.submodules
       ref = fetcher.fetch_ref(uri, revision)
+      fail "couldn't fetch ref for #{spec.full_name}" unless ref
 
       { type: 'builtins-git',
         url: uri.to_s,

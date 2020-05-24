@@ -34,11 +34,10 @@ in
     mkdir -p $out
     makeWrapper $src/bin/bundix $out/bin/bundix \
       --prefix PATH : "${nix.out}/bin" \
-      --prefix PATH : "${git.out}/bin" \
       --set GEM_PATH "${bundler}/${bundler.ruby.gemPath}"
   '';
 
   nativeBuildInputs = [makeWrapper];
 
-  buildInputs = [bundler ruby minitest rake git];
+  buildInputs = [bundler ruby minitest rake];
 }

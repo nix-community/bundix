@@ -100,14 +100,14 @@ class Bundix
       ENV['BUNDLE_GEMFILE'] = options[:gemfile]
 
       if options[:magic]
-        fail unless system(
-          Bundix::NIX_SHELL, '-p', options[:ruby],
-          "bundler.override { ruby = #{options[:ruby]}; }",
-          "--command", "bundle lock --lockfile=#{options[:lockfile]}")
-        fail unless system(
-          Bundix::NIX_SHELL, '-p', options[:ruby],
-          "bundler.override { ruby = #{options[:ruby]}; }",
-          "--command", "bundle pack --all --path #{options[:bundle_pack_path]}")
+        prefix =
+          if ENV['IN_NIX_SHELL']
+            []
+          else
+            [Bundix::NIX_SHELL, '-p', options[:ruby], "bundler.override { ruby = #{options[:ruby]}; }", "--command"]
+          end
+        fail unless system(*prefix, "bundle lock --lockfile=#{options[:lockfile]}")
+        fail unless system(*prefix, "bundle pack --path #{options[:bundle_pack_path]}")
       end
     end
 

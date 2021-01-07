@@ -1,15 +1,22 @@
-{
-  pkgs ? (import <nixpkgs> {}),
-  ruby ? pkgs.ruby_2_6,
-  bundler ? (pkgs.bundler.override { inherit ruby; }),
-  nix ? pkgs.nix,
-  nix-prefetch-git ? pkgs.nix-prefetch-git,
+{ pkgs ? (import <nixpkgs> {})
+, ruby ? pkgs.ruby_2_6
+, bundler ? (pkgs.bundler.override { inherit ruby; })
+, nix ? pkgs.nix
+, nix-prefetch-git ? pkgs.nix-prefetch-git
+, rake ? pkgs.rubyPackages.rake
+, minitest ? pkgs.rubyPackages.minitest
+, nix-prefetch-scripts ? pkgs.nix-prefetch-scripts
 }:
-pkgs.stdenv.mkDerivation rec {
+let
+ srcWithout = rootPath: ignoredPaths:
+   let
+     ignoreStrings = map (path: toString path ) ignoredPaths;
+   in
+    builtins.filterSource (path: type: (builtins.all (i: i != path) ignoreStrings)) rootPath;
+in pkgs.stdenv.mkDerivation rec {
   version = "2.5.0";
   name = "bundix";
-  src = ./.;
-  phases = "installPhase";
+  src = srcWithout ./. [ ./.git ./tmp ./result ];
   installPhase = ''
     mkdir -p $out
     makeWrapper $src/bin/bundix $out/bin/bundix \
@@ -21,6 +28,19 @@ pkgs.stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ pkgs.makeWrapper ];
   buildInputs = [ ruby bundler ];
+
+  checkInputs = [
+    rake
+    minitest
+
+    nix-prefetch-scripts
+    nix
+  ];
+
+  doCheck = true;
+  checkPhase = ''
+    NIX_STATE_DIR=$TMPDIR/var HOME=$TMPDIR rake test
+  '';
 
   meta = {
     inherit version;

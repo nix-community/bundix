@@ -92,11 +92,20 @@ class Bundix
     end
 
     def fetch_local_hash(spec)
-      spec.source.caches.each do |cache|
-        path = File.join(cache, "#{spec.full_name}.gem")
-        next unless File.file?(path)
+      has_platform = spec.platform && spec.platform != Gem::Platform::RUBY
+      name_version = "#{spec.name}-#{spec.version}"
+      filename = has_platform ? "#{name_version}-*" : name_version
+
+      paths = spec.source.caches.map(&:to_s)
+      Dir.glob("{#{paths.join(',')}}/#{filename}.gem").each do |path|
+        if has_platform
+          # Find first gem that matches the platform
+          platform = File.basename(path, '.gem')[(name_version.size + 1)..-1]
+          next unless Gem::Platform.match(platform)
+        end
+
         hash = nix_prefetch_url(path)[SHA256_32]
-        return format_hash(hash) if hash
+        return format_hash(hash), platform if hash
       end
 
       nil
@@ -104,22 +113,37 @@ class Bundix
 
     def fetch_remotes_hash(spec, remotes)
       remotes.each do |remote|
-        hash = fetch_remote_hash(spec, remote)
-        return remote, format_hash(hash) if hash
+        hash, platform = fetch_remote_hash(spec, remote)
+        return remote, format_hash(hash), platform if hash
       end
 
       nil
     end
 
     def fetch_remote_hash(spec, remote)
+      has_platform = spec.platform && spec.platform != Gem::Platform::RUBY
+      if has_platform
+        # Fetch remote spec to determine the exact platform
+        # Note that we can't simply use the local platform; the platform of the gem might differ.
+        # e.g. universal-darwin-14 covers x86_64-darwin-14
+        spec = spec_for_dependency(remote, spec.name, spec.version)
+        return unless spec
+      end
+
       uri = "#{remote}/gems/#{spec.full_name}.gem"
       result = nix_prefetch_url(uri)
       return unless result
-      result[SHA256_32]
+
+      return result[SHA256_32], spec.platform&.to_s
     rescue => e
       puts "ignoring error during fetching: #{e}"
       puts e.backtrace
       nil
+    end
+
+    def spec_for_dependency(remote, name, version)
+      sources = Gem::SourceList.from([remote])
+      Gem::SpecFetcher.new(sources).spec_for_dependency(Gem::Dependency.new(name, version)).first&.first&.first
     end
   end
 
@@ -140,21 +164,35 @@ class Bundix
 
     def convert_path
       {
-        type: "path",
-        path: spec.source.path
+        version: spec.version.to_s,
+        source: {
+          type: 'path',
+          path: spec.source.path,
+        },
       }
     end
 
     def convert_rubygems
       remotes = spec.source.remotes.map{|remote| remote.to_s.sub(/\/+$/, '') }
-      hash = fetcher.fetch_local_hash(spec)
-      remote, hash = fetcher.fetch_remotes_hash(spec, remotes) unless hash
+      hash, platform = fetcher.fetch_local_hash(spec)
+      remote, hash, platform = fetcher.fetch_remotes_hash(spec, remotes) unless hash
       fail "couldn't fetch hash for #{spec.full_name}" unless hash
-      puts "#{hash} => #{spec.full_name}.gem" if $VERBOSE
 
-      { type: 'gem',
-        remotes: (remote ? [remote] : remotes),
-        sha256: hash }
+      version = spec.version.to_s
+      if platform && platform != Gem::Platform::RUBY
+        version += "-#{platform}"
+      end
+
+      puts "#{hash} => #{spec.name}-#{version}.gem" if $VERBOSE
+
+      {
+        version: version,
+        source: {
+          type: 'gem',
+          remotes: (remote ? [remote] : remotes),
+          sha256: hash,
+        },
+      }
     end
 
     def convert_git
@@ -167,11 +205,16 @@ class Bundix
       fail "couldn't fetch hash for #{spec.full_name}" unless hash
       puts "#{hash} => #{uri}" if $VERBOSE
 
-      { type: 'git',
-        url: uri.to_s,
-        rev: revision,
-        sha256: hash,
-        fetchSubmodules: submodules }
+      {
+        version: spec.version.to_s,
+        source: {
+          type: 'git',
+          url: uri.to_s,
+          rev: revision,
+          sha256: hash,
+          fetchSubmodules: submodules,
+        },
+      }
     end
   end
 end

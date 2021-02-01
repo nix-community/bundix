@@ -72,21 +72,6 @@ class Bundix
       nil
     end
 
-    def nix_prefetch_git(uri, revision, submodules: false)
-      home = ENV['HOME']
-      ENV['HOME'] = '/homeless-shelter'
-
-      args = []
-      args << '--url' << uri
-      args << '--rev' << revision
-      args << '--hash' << 'sha256'
-      args << '--fetch-submodules' if submodules
-
-      sh(NIX_PREFETCH_GIT, *args)
-    ensure
-      ENV['HOME'] = home
-    end
-
     def format_hash(hash)
       sh(NIX_HASH, '--type', 'sha256', '--to-base32', hash)[SHA256_32]
     end
@@ -161,17 +146,41 @@ class Bundix
       revision = spec.source.options.fetch('revision')
       uri = spec.source.options.fetch('uri')
       submodules = !!spec.source.submodules
-      output = fetcher.nix_prefetch_git(uri, revision, submodules: submodules)
-      # FIXME: this is a hack, we should separate $stdout/$stderr in the sh call
-      hash = JSON.parse(output[/({[^}]+})\s*\z/m])['sha256']
-      fail "couldn't fetch hash for #{spec.full_name}" unless hash
-      puts "#{hash} => #{uri}" if $VERBOSE
+      ref, branch, tag = spec.source.options.values_at('ref', 'branch', 'tag')
+      unless ref.nil?
+        # Didn't find a good enough solution for this since Bundler accepts
+        # SHA1's that are shorter than 40 characters, which means we don't know
+        # if the ref in the Gemfile is a hash or a branch/tag name.
+        #
+        # (builtins.fetchGit only takes a tag/branch as 'ref')
+        #
+        # One possible solution if we could discriminate between a short SHA1
+        # and tags/refs would be to clone the repo and do `git name-rev $ref`.
+        #
+        # Leaving this as a hint for anyone wanting to implement this.
+        fetcher.print_error(
+           "Please provide a 40 character SHA1 as 'ref' in Gemfile.\n" +
+           "If you tried providing a tag/branch name please use 'tag' or 'branch' respectively in the Gemfile.\n" +
+           "More info: https://bundler.io/guides/git.html"
+        )
+        raise
+      end
+      unless branch.nil?
+        ref = branch
+      end
+      unless tag.nil?
+        ref = tag
+      end
+      # Setting ref to master. This should work since Bundler doesn't handle
+      # repos without a master branch that hasn't 'branch' or 'tag' specified
+      # in the Gemfile explicitly
+      ref = 'master' unless ref
 
-      { type: 'git',
+      { type: 'builtins-git',
         url: uri.to_s,
         rev: revision,
-        sha256: hash,
-        fetchSubmodules: submodules }
+        ref: ref,
+        submodules: submodules }
     end
   end
 end

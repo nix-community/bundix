@@ -157,6 +157,7 @@ class Bundix
       tempfile = Tempfile.new('gemset.nix', encoding: 'UTF-8')
       begin
         tempfile.write(object2nix(gemset))
+        tempfile.write("\n")
         tempfile.flush
         FileUtils.cp(tempfile.path, options[:gemset])
         FileUtils.chmod(0644, options[:gemset])

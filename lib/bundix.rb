@@ -17,7 +17,7 @@ class Bundix
 
   SHA256_32 = %r(^[a-z0-9]{52}$)
 
-  attr_reader :options
+  attr_reader :options, :target_platform
 
   attr_accessor :fetcher
 
@@ -32,6 +32,7 @@ class Bundix
 
   def initialize(options)
     @options = { quiet: false, tempfile: nil }.merge(options)
+    @target_platform = options[:platform] ? Gem::Platform.new(options[:platform]) : Gem::Platform::RUBY
     @fetcher = Fetcher.new
   end
 
@@ -40,8 +41,10 @@ class Bundix
     lock = parse_lockfile
     dep_cache = build_depcache(lock)
 
-    # reverse so git comes last
-    lock.specs.reverse_each.with_object({}) do |spec, gems|
+    lock.specs.group_by(&:name).each.with_object({}) do |(name, specs), gems|
+      # reverse so git/plain-ruby sources come last
+      spec = specs.reverse.find {|s| s.platform == Gem::Platform::RUBY || s.platform =~ target_platform }
+      next unless spec
       gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
       gems.merge!(gem)
 
@@ -82,15 +85,25 @@ class Bundix
       PLATFORM_MAPPING[platform_name.to_s]
     end.flatten
 
-    {platforms: platforms}
+    # 'platforms' is the Bundler DSL for including a gem if we're on a certain platform.
+    # 'target_platform' is the platform that bundix is currently resolving gem-specs for.
+    # 'gem_platform' is the platform of the resulting spec.
+    # (eg we might be resolving gem-specs for x86_64-darwin, but if there's not a suitable
+    # precompiled gem available, then gem_platform will just be 'ruby')
+    {
+      platforms: platforms,
+      target_platform: target_platform.to_s,
+      gem_platform: spec.platform.to_s,
+    }
   end
 
   def convert_spec(spec, cache, dep_cache)
     {
-      spec.name => {
-        version: spec.version.to_s,
-        source: Source.new(spec, fetcher).convert
-      }.merge(platforms(spec, dep_cache)).merge(groups(spec, dep_cache))
+      spec.name => [
+        platforms(spec, dep_cache),
+        groups(spec, dep_cache),
+        Source.new(spec, fetcher).convert,
+      ].inject(&:merge),
     }
   rescue => ex
     warn "Skipping #{spec.name}: #{ex}"
@@ -102,6 +115,7 @@ class Bundix
     name, cached = cache.find{|k, v|
       next unless k == spec.name
       next unless cached_source = v['source']
+      next unless target_platform.to_s == v['target_platform']
 
       case spec_source = spec.source
       when Bundler::Source::Git
@@ -169,7 +183,11 @@ class Bundix
   end
 
   def parse_lockfile
-    Bundler::LockfileParser.new(File.read(options[:lockfile]))
+    lock = Bundler::LockfileParser.new(File.read(options[:lockfile]))
+    if !lock.platforms.include?(target_platform)
+      raise KeyError, "#{target_platform} not listed in gemfile. Try `bundle lock --add-platform #{target_platform}`"
+    end
+    lock
   end
 
   def self.sh(*args, &block)

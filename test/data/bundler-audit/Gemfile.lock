@@ -5,12 +5,18 @@ GEM
       bundler (~> 1.2)
       thor (~> 0.18)
     thor (0.19.4)
+    sorbet (0.4.4821)
+      sorbet-static (= 0.4.4821)
+    sorbet-static (0.4.4821-java)
+    sorbet-static (0.4.4821-universal-darwin-14)
 
 PLATFORMS
+  java
   ruby
 
 DEPENDENCIES
   bundler-audit!
+  sorbet (= 0.4.4821)!
 
 BUNDLED WITH
    1.12.5

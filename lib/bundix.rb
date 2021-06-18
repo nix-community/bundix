@@ -127,7 +127,7 @@ class Bundix
     end
 
     lock.specs.each do |spec|
-      dep_cache[spec.name] ||= Dependency.new(spec.name, nil, {})
+      dep_cache[spec.name] ||= Dependency.new(spec.name, nil, { "group" => [] })
     end
 
     begin
@@ -143,7 +143,7 @@ class Bundix
             dep_cache[name] = Dependency.new(name, lock.bundler_version, {})
           end
 
-          if !((as_dep.groups - cached.groups) - [:default]).empty? or !(as_dep.platforms - cached.platforms).empty?
+          if !(as_dep.groups - cached.groups).empty? or !(as_dep.platforms - cached.platforms).empty?
             changed = true
             dep_cache[cached.name] = (Dependency.new(cached.name, nil, {
               "group" => as_dep.groups | cached.groups,

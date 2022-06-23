@@ -20,7 +20,7 @@ class Bundix
       end
 
       begin
-        open(uri.to_s, 'r', 0600, open_options) do |net|
+        URI.open(uri.to_s, 'r', 0600, open_options) do |net|
           File.open(file, 'wb+') { |local|
             File.copy_stream(net, local)
           }

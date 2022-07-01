@@ -15,7 +15,8 @@ class Bundix
       gemfile: 'Gemfile',
       lockfile: 'Gemfile.lock',
       gemset: 'gemset.nix',
-      project: File.basename(Dir.pwd)
+      project: File.basename(Dir.pwd),
+      platform: 'ruby'
     }
 
     def self.run
@@ -33,8 +34,10 @@ class Bundix
       handle_magic
       handle_lock
       handle_init
-      gemset = build_gemset
-      save_gemset(gemset)
+      platforms_and_paths.each do |platform, path|
+        gemset = build_gemset(path, platform)
+        save_gemset(gemset, path)
+      end
     end
 
     def parse_options
@@ -65,6 +68,14 @@ class Bundix
 
         o.on "--gemfile=#{options[:gemfile]}", 'path to the Gemfile' do |value|
           options[:gemfile] = File.expand_path(value)
+        end
+
+        o.on "--platform=#{options[:platform]}", 'platform version to use' do |value|
+          options[:platform] = value
+        end
+
+        o.on "--platforms=ruby", 'auto-generate gemsets for multiple comma-separated platforms' do |value|
+          options[:platforms] = value
         end
 
         o.on '-d', '--dependencies', 'include gem dependencies (deprecated)' do
@@ -145,22 +156,46 @@ class Bundix
       end
     end
 
-    def build_gemset
-      Bundix.new(options).convert
+    def build_gemset(gemset, platform)
+      Bundix.new(options.merge(gemset: gemset, platform: platform)).convert
     end
 
     def object2nix(obj)
       Nixer.serialize(obj)
     end
 
-    def save_gemset(gemset)
+    # If options[:platforms] is set, autogenerate a list of platforms & paths like
+    # [["ruby", "gemset.nix"], ["x86_64-darwin", "gemset.x86_64-darwin.nix"]]
+    # Otherwise, just rely on the specific platform & path.
+    def platforms_and_paths
+      gemset_path = options[:gemset]
+      if options[:platforms]
+        platforms = options[:platforms].split(",")
+        platforms.map { |p| [p, path_with_platform(gemset_path, p)] }
+      else
+        [[options[:platform], gemset_path]]
+      end
+    end
+
+    # convert a path like "gemset.nix" to a platform-specific one like "gemset.x86_64-linux.nix"
+    def path_with_platform(path, platform)
+      if platform == "ruby"
+        path
+      else
+        path_with_platform = path.sub(/\.nix$/, ".#{platform}.nix")
+        fail "Couldn't add platform to path" unless Regexp.last_match
+        path_with_platform
+      end
+    end
+
+    def save_gemset(gemset, path)
       tempfile = Tempfile.new('gemset.nix', encoding: 'UTF-8')
       begin
         tempfile.write(object2nix(gemset))
         tempfile.write("\n")
         tempfile.flush
-        FileUtils.cp(tempfile.path, options[:gemset])
-        FileUtils.chmod(0644, options[:gemset])
+        FileUtils.cp(tempfile.path, path)
+        FileUtils.chmod(0644, path)
       ensure
         tempfile.close!
         tempfile.unlink

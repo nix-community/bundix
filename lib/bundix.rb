@@ -87,10 +87,11 @@ class Bundix
 
   def convert_spec(spec, cache, dep_cache)
     {
-      spec.name => {
-        version: spec.version.to_s,
-        source: Source.new(spec, fetcher).convert
-      }.merge(platforms(spec, dep_cache)).merge(groups(spec, dep_cache))
+      spec.name => [
+        platforms(spec, dep_cache),
+        groups(spec, dep_cache),
+        Source.new(spec, fetcher).convert,
+      ].inject(&:merge),
     }
   rescue => ex
     warn "Skipping #{spec.name}: #{ex}"

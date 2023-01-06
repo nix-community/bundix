@@ -118,7 +118,7 @@ class Bundix
         spec.dependencies.each do |dep|
           cached = dep_cache.fetch(dep.name) do |name|
             if name != "bundler"
-              raise KeyError, "Gem dependency '#{name}' not specified in #{lockfile}"
+              raise KeyError, "Gem dependency '#{name}' not specified in #{options[:lockfile]}"
             end
             dep_cache[name] = Dependency.new(name, lock.bundler_version, {})
           end

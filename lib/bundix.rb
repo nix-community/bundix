@@ -41,7 +41,7 @@ class Bundix
 
     # reverse so git comes last
     lock.specs.reverse_each.with_object({}) do |spec, gems|
-      gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
+      gem = convert_spec(spec, dep_cache)
       gems.merge!(gem)
 
       if spec.dependencies.any?

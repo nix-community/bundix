@@ -40,15 +40,27 @@ class Bundix
     lock = parse_lockfile
     dep_cache = build_depcache(lock)
 
-    # reverse so git comes last
-    lock.specs.reverse_each.with_object({}) do |spec, gems|
-      gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
-      gems.merge!(gem)
+    gems = Hash.new { |h, k| h[k] = [] }
 
+    # reverse so git comes last
+    lock.specs.reverse_each do |spec|
+      gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
+      gem = gem.values.first # `gem` is a hash with only one value
       if spec.dependencies.any?
-        gems[spec.name]['dependencies'] = spec.dependencies.map(&:name) - ['bundler']
+        gem['dependencies'] = spec.dependencies.map(&:name) - ['bundler']
       end
+      gems[spec.name] << JSON.load(JSON.dump(gem)) # awful hack to stringify keys
     end
+
+    gems.map do |name, variants|
+      # use the plain old ruby gem as the primary source, add other platforms as 'nativeSources'
+      # If for some reason there's no plain ruby gem, just use the first available platform as the primary source
+      primary, *others = variants.sort_by do |v|
+        platform = v["source"]["platform"] || "ruby"
+        [platform == "ruby" ? 0 : 1, platform]
+      end
+      [name, primary.merge("nativeSources" => others.map { |o| o["source"] }.uniq)]
+    end.to_h
   end
 
   def groups(spec, dep_cache)
@@ -100,6 +112,10 @@ class Bundix
   end
 
   def find_cached_spec(spec, cache)
+    if spec.platform != "ruby"
+      puts "TODO: figure out a sane way of dealing with nativeSources from the cache"
+      return nil
+    end
     name, cached = cache.find{|k, v|
       next unless k == spec.name
       next unless cached_source = v['source']

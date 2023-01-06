@@ -101,7 +101,7 @@ class Bundix
         if has_platform
           # Find first gem that matches the platform
           platform = File.basename(path, '.gem')[(name_version.size + 1)..-1]
-          next unless Gem::Platform.match(platform)
+          next unless spec.platform =~ platform
         end
 
         hash = nix_prefetch_url(path)[SHA256_32]
@@ -126,7 +126,7 @@ class Bundix
         # Fetch remote spec to determine the exact platform
         # Note that we can't simply use the local platform; the platform of the gem might differ.
         # e.g. universal-darwin-14 covers x86_64-darwin-14
-        spec = spec_for_dependency(remote, spec.name, spec.version)
+        spec = spec_for_dependency(remote, spec)
         return unless spec
       end
 
@@ -141,9 +141,15 @@ class Bundix
       nil
     end
 
-    def spec_for_dependency(remote, name, version)
+    def spec_for_dependency(remote, dependency)
       sources = Gem::SourceList.from([remote])
-      Gem::SpecFetcher.new(sources).spec_for_dependency(Gem::Dependency.new(name, version)).first&.first&.first
+      specs, _errors = Gem::SpecFetcher.new(sources).spec_for_dependency(Gem::Dependency.new(dependency.name, dependency.version), false)
+      specs.each do |spec, source|
+        return spec if dependency.platform == spec.platform
+      end
+      # TODO: When might this happen?
+      puts 'oh, fallback ' + dependency.platform.to_s
+      specs.first.first
     end
   end
 
@@ -191,6 +197,7 @@ class Bundix
           type: 'gem',
           remotes: (remote ? [remote] : remotes),
           sha256: hash,
+          platform: platform || "ruby",
         },
       }
     end

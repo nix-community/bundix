@@ -36,7 +36,6 @@ class Bundix
   end
 
   def convert
-    cache = parse_gemset
     lock = parse_lockfile
     dep_cache = build_depcache(lock)
 
@@ -44,7 +43,7 @@ class Bundix
 
     # reverse so git comes last
     lock.specs.reverse_each do |spec|
-      gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
+      gem = convert_spec(spec, dep_cache)
       gem = gem.values.first # `gem` is a hash with only one value
       if spec.dependencies.any?
         gem['dependencies'] = spec.dependencies.map(&:name) - ['bundler']
@@ -97,7 +96,7 @@ class Bundix
     {platforms: platforms}
   end
 
-  def convert_spec(spec, cache, dep_cache)
+  def convert_spec(spec, dep_cache)
     {
       spec.name => [
         platforms(spec, dep_cache),
@@ -109,30 +108,6 @@ class Bundix
     warn "Skipping #{spec.name}: #{ex}"
     puts ex.backtrace
     {spec.name => {}}
-  end
-
-  def find_cached_spec(spec, cache)
-    if spec.platform != "ruby"
-      puts "TODO: figure out a sane way of dealing with nativeSources from the cache"
-      return nil
-    end
-    name, cached = cache.find{|k, v|
-      next unless k == spec.name
-      next unless cached_source = v['source']
-
-      case spec_source = spec.source
-      when Bundler::Source::Git
-        next unless cached_source['type'] == 'git'
-        next unless cached_rev = cached_source['rev']
-        next unless spec_rev = spec_source.options['revision']
-        spec_rev == cached_rev
-      when Bundler::Source::Rubygems
-        next unless cached_source['type'] == 'gem'
-        v['version'] == spec.version.to_s
-      end
-    }
-
-    {name => cached} if cached
   end
 
   def build_depcache(lock)
@@ -174,15 +149,6 @@ class Bundix
     end while changed
 
     return dep_cache
-  end
-
-  def parse_gemset
-    path = File.expand_path(options[:gemset])
-    return {} unless File.file?(path)
-    json = Bundix.sh(NIX_INSTANTIATE, '--eval', '-E', %(
-      builtins.toJSON (import #{Nixer.serialize(path)}))
-    )
-    JSON.parse(json.strip.gsub(/\\"/, '"')[1..-2])
   end
 
   def parse_lockfile

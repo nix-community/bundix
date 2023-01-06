@@ -8,7 +8,9 @@ class TestConvert < Minitest::Test
     SPECS = {
       "sorbet-static" => {
         platform: 'java-123',
-        version: "0.4.4821",
+      },
+      "sqlite3" => {
+        platform: 'universal-darwin-22',
       },
     }
 
@@ -55,9 +57,10 @@ class TestConvert < Minitest::Test
       :gemfile => File.expand_path("data/bundler-audit/Gemfile", __dir__),
       :lockfile => File.expand_path("data/bundler-audit/Gemfile.lock", __dir__)
     ) do |gemset|
-      assert_equal("0.5.0", gemset.dig("bundler-audit", :version))
-      assert_equal("0.19.4", gemset.dig("thor", :version))
-      assert_equal("0.4.4821-java-unknown", gemset.dig("sorbet-static", :version))
+      assert_equal("0.9.1", gemset.dig("bundler-audit", :version))
+      assert_equal("1.2.1", gemset.dig("thor", :version))
+      assert_equal("0.5.10607-java-unknown", gemset.dig("sorbet-static", :version))
+      assert_equal("1.5.4-universal-darwin-22", gemset.dig("sqlite3", :version))
     end
   end
 end

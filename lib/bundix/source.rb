@@ -141,9 +141,16 @@ class Bundix
       nil
     end
 
+    # res = Gem::SpecFetcher.new(Gem::SourceList.from(["https://rubygems.org"])).
+    #   spec_for_dependency(Gem::Dependency.new("nokogiri"), false)
+    # res.first.map do |n| p = n.first.platform;
+    #   (p.respond_to?(:cpu) ? [p.cpu, p.os, p.version] : p)
+    # end
     def spec_for_dependency(remote, name, version)
       sources = Gem::SourceList.from([remote])
-      Gem::SpecFetcher.new(sources).spec_for_dependency(Gem::Dependency.new(name, version)).first&.first&.first
+      spec = Gem::SpecFetcher.new(sources).spec_for_dependency \
+        Gem::Dependency.new(name, version), false
+      spec.first&.first&.first
     end
   end
 

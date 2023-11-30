@@ -107,7 +107,7 @@ class Bundix
         fail unless system(
           Bundix::NIX_SHELL, '-p', options[:ruby],
           "bundler.override { ruby = #{options[:ruby]}; }",
-          "--command", "bundle pack --all --path #{options[:bundle_pack_path]}")
+          "--command", "bundle pack --path #{options[:bundle_pack_path]}")
       end
     end
 

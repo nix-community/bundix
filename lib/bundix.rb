@@ -43,7 +43,7 @@ class Bundix
 
     # reverse so git comes last
     lock.specs.reverse_each.with_object({}) do |spec, gems|
-      gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
+      gem = find_cached_spec(spec, cache, dep_cache) || convert_spec(spec, cache, dep_cache)
       gems.merge!(gem)
 
       if spec.dependencies.any?
@@ -99,7 +99,7 @@ class Bundix
     {spec.name => {}}
   end
 
-  def find_cached_spec(spec, cache)
+  def find_cached_spec(spec, cache, dep_cache)
     name, cached = cache.find{|k, v|
       next unless k == spec.name
       next unless cached_source = v['source']
@@ -116,7 +116,13 @@ class Bundix
       end
     }
 
-    {name => cached} if cached
+    if cached
+      updated = cached.slice('source', 'version')
+        .merge(groups(spec, dep_cache))
+        .merge(platforms(spec, dep_cache))
+
+      { name => updated }
+    end
   end
 
   def build_depcache(lock)
@@ -128,7 +134,7 @@ class Bundix
     end
 
     lock.specs.each do |spec|
-      dep_cache[spec.name] ||= Dependency.new(spec.name, nil, {})
+      dep_cache[spec.name] ||= Dependency.new(spec.name, nil, { "group" => [] })
     end
 
     begin
@@ -144,7 +150,7 @@ class Bundix
             dep_cache[name] = Dependency.new(name, lock.bundler_version, {})
           end
 
-          if !((as_dep.groups - cached.groups) - [:default]).empty? or !(as_dep.platforms - cached.platforms).empty?
+          if !(as_dep.groups - cached.groups).empty? or !(as_dep.platforms - cached.platforms).empty?
             changed = true
             dep_cache[cached.name] = (Dependency.new(cached.name, nil, {
               "group" => as_dep.groups | cached.groups,

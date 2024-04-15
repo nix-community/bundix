@@ -13,7 +13,7 @@ class Bundix
         FileUtils.cp(url, file)
       when 'http', 'https'
         unless uri.user
-          inject_credentials_from_bundler_settings(uri)
+          uri = inject_credentials_from_bundler_settings(uri)
         end
 
         Net::HTTP.start(uri.host, uri.port, use_ssl: (uri.scheme == 'https')) do |http|
@@ -51,8 +51,10 @@ class Bundix
     def inject_credentials_from_bundler_settings(uri)
       @bundler_settings ||= Bundler::Settings.new(Bundler.root + '.bundle')
 
-      if val = @bundler_settings[uri.host]
-        uri.user, uri.password = val.split(':', 2)
+      URI(uri.to_s).tap do |auth_uri|
+        if val = @bundler_settings[auth_uri.host]
+          auth_uri.user, auth_uri.password = val.split(':', 2)
+        end
       end
     end
 
@@ -91,16 +93,18 @@ class Bundix
     def nix_prefetch_git(uri, revision, submodules: false)
       home = ENV['HOME']
       ENV['HOME'] = '/homeless-shelter'
-
-      args = []
-      args << '--url' << uri
-      args << '--rev' << revision
-      args << '--hash' << 'sha256'
-      args << '--fetch-submodules' if submodules
-
-      sh(NIX_PREFETCH_GIT, *args)
+      sh(*nix_prefetch_git_command(uri, revision, submodules))
     ensure
       ENV['HOME'] = home
+    end
+
+    def nix_prefetch_git_command(uri, revision, submodules)
+      [
+        NIX_PREFETCH_GIT,
+        "--url", "#{inject_credentials_from_bundler_settings(uri)}",
+        "--rev", "#{revision}",
+        "--hash", "sha256"
+      ]
     end
 
     def format_hash(hash)

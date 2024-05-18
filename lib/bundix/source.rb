@@ -1,3 +1,5 @@
+require 'digest/sha2'
+
 class Bundix
   class Fetcher
     def sh(*args, &block)
@@ -111,7 +113,11 @@ class Bundix
       spec.source.caches.each do |cache|
         path = File.join(cache, "#{spec.full_name}.gem")
         next unless File.file?(path)
-        hash = nix_prefetch_url(path)&.[](SHA256_32)
+        hash = Digest::SHA256.file(path).digest.bytes
+          .reverse
+          .reduce(0) {|n, b| (n << 8) + b }
+          .digits(32).map {|d| "0123456789abcdfghijklmnpqrsvwxyz"[d] }.join.ljust(52, '0')
+          .reverse
         return format_hash(hash) if hash
       end
 

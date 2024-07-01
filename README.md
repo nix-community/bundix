@@ -1,7 +1,12 @@
 # About
 
-Bundix makes it easy to package your [Bundler](http://bundler.io/)-enabled Ruby
-applications with the [Nix](http://nixos.org/nix/) package manager.
+Bundix is a tool that bridges the gap between [Bundler](http://bundler.io/) (the
+Ruby dependency manager) and [Nix](http://nixos.org/nix/) (the package manager
+and build system). It does this by automating the generation of Nix expressions
+for each Ruby gem in `Gemfile.lock`.
+
+The end result is that Gems will load from `/nix/store/...` in a declarative
+manner, rather then from wherever `bundle install` may have put them.
 
 ## Installation
 

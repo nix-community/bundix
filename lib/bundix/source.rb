@@ -108,6 +108,11 @@ class Bundix
     end
 
     def fetch_local_hash(spec)
+      if defined?(spec.source.checksum_store)
+        locked_spec = spec.source.checksum_store.to_lock(spec)
+        hash = Bundler::Checksum.from_lock(locked_spec, "").digest
+        return format_hash(hash) if hash
+      end
       spec.source.caches.each do |cache|
         path = File.join(cache, "#{spec.full_name}.gem")
         next unless File.file?(path)

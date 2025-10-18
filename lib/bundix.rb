@@ -1,6 +1,7 @@
 require 'bundler'
+require 'fileutils'
 require 'json'
-require 'open-uri'
+require 'net/http'
 require 'open3'
 require 'pp'
 

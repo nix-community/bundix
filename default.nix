@@ -1,6 +1,6 @@
 {
   pkgs ? (import <nixpkgs> {}),
-  ruby ? pkgs.ruby_2_6,
+  ruby ? pkgs.ruby,
   bundler ? (pkgs.bundler.override { inherit ruby; }),
   nix ? pkgs.nix,
   nix-prefetch-git ? pkgs.nix-prefetch-git,
@@ -13,7 +13,7 @@ pkgs.stdenv.mkDerivation rec {
   installPhase = ''
     mkdir -p $out
     makeWrapper $src/bin/bundix $out/bin/bundix \
-      --prefix PATH : "${nix.out}/bin" \
+      --suffix PATH : "${nix.out}/bin" \
       --prefix PATH : "${nix-prefetch-git.out}/bin" \
       --prefix PATH : "${bundler.out}/bin" \
       --set GEM_HOME "${bundler}/${bundler.ruby.gemPath}" \

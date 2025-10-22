@@ -16,6 +16,7 @@ pkgs.stdenv.mkDerivation rec {
       --suffix PATH : "${nix.out}/bin" \
       --prefix PATH : "${nix-prefetch-git.out}/bin" \
       --prefix PATH : "${bundler.out}/bin" \
+      --set GEM_HOME "${bundler}/${bundler.ruby.gemPath}" \
       --set GEM_PATH "${bundler}/${bundler.ruby.gemPath}"
   '';
 

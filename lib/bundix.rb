@@ -67,6 +67,7 @@ class Bundix
     "mswin64" => [{engine: "mswin64"}],
     "mingw" => [{engine: "mingw"}],
     "truffleruby" => [{engine: "ruby"}],
+    "windows" => [{engine: "mswin"}, {engine: "mswin64"}, {engine: "mingw"}],
     "x64_mingw" => [{engine: "mingw"}],
   }.each do |name, list|
     PLATFORM_MAPPING[name] = list
@@ -79,7 +80,7 @@ class Bundix
 
   def platforms(spec, dep_cache)
     # c.f. Bundler::CurrentRuby
-    platforms = dep_cache.fetch(spec.name).platforms.map do |platform_name|
+    platforms = dep_cache.fetch(spec.name).platforms.filter_map do |platform_name|
       PLATFORM_MAPPING[platform_name.to_s]
     end.flatten
 

@@ -18,6 +18,10 @@ class TestConvert < Minitest::Test
     def fetch_remotes_hash(spec, remotes)
       return "fetch_remotes_hash_hash"
     end
+
+    def fetch_licenses(spec, remote)
+      return ["MIT"]
+    end
   end
 
   def with_gemset(options)
@@ -40,6 +44,7 @@ class TestConvert < Minitest::Test
     ) do |gemset|
       assert_equal("0.5.0", gemset.dig("bundler-audit", :version))
       assert_equal("0.19.4", gemset.dig("thor", :version))
+      assert_equal(["MIT"], gemset.dig("thor", :licenses))
     end
   end
 end

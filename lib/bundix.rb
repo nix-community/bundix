@@ -4,6 +4,7 @@ require 'json'
 require 'net/http'
 require 'open3'
 require 'pp'
+require 'rubygems/package'
 
 require_relative 'bundix/version'
 require_relative 'bundix/source'
@@ -87,16 +88,27 @@ class Bundix
   end
 
   def convert_spec(spec, cache, dep_cache)
+    source = Source.new(spec, fetcher).convert
     {
       spec.name => {
         version: spec.version.to_s,
-        source: Source.new(spec, fetcher).convert
-      }.merge(platforms(spec, dep_cache)).merge(groups(spec, dep_cache))
+        source: source
+      }.merge(licenses(spec, source[:remotes]))
+        .merge(platforms(spec, dep_cache)).merge(groups(spec, dep_cache))
     }
   rescue => ex
     warn "Skipping #{spec.name}: #{ex}"
     puts ex.backtrace
     {spec.name => {}}
+  end
+
+  # The licenses in the gemspec of a gem from a remote. Returns an empty hash
+  # for the other gems, and if the gem is not available.
+  def licenses(spec, remotes)
+    return {} unless spec.source.is_a?(Bundler::Source::Rubygems)
+
+    licenses = fetcher.fetch_licenses(spec, remotes.first)
+    licenses ? {licenses: licenses} : {}
   end
 
   def find_cached_spec(spec, cache)
@@ -116,7 +128,16 @@ class Bundix
       end
     }
 
-    {name => cached} if cached
+    return unless cached
+
+    # Add the licenses to a gem from a `gemset.nix` without licenses.
+    if cached['source']['type'] == 'gem' && !cached.key?('licenses')
+      cached = cached.merge(
+        licenses(spec, cached['source']['remotes'] || []).transform_keys(&:to_s)
+      )
+    end
+
+    {name => cached}
   end
 
   def build_depcache(lock)

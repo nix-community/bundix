@@ -92,6 +92,11 @@ As an added bonus I also implemented parsing the `gemset.nix` if it already
 exists, and get hashes from there directly, that way updating an existing
 `gemset.nix` only takes a few seconds.
 
+For each gem from a remote, bundix also writes the `licenses` of its gemspec
+to the `gemset.nix`. It reads them from the gem that it downloaded for the
+hash. A gem from an existing `gemset.nix` that has no `licenses` is downloaded
+one time to get them.
+
 The output from bundix should be as stable as possible, to make auditing diffs
 easier, that's why I also implemented a pretty printer for the `gemset.nix`.
 

@@ -69,13 +69,20 @@ class Bundix
       STDERR.puts(msg)
     end
 
-    def nix_prefetch_url(url)
+    # Downloads the file at `url` to the cache of bundix, if it is not in the
+    # cache yet. Returns the path of the file, or nil if the download failed.
+    def cached_download(url)
       dir = File.join(ENV['XDG_CACHE_HOME'] || "#{ENV['HOME']}/.cache", 'bundix')
       FileUtils.mkdir_p dir
       file = File.join(dir, url.gsub(/[^\w-]+/, '_'))
 
       download(file, url) unless File.size?(file)
-      return unless File.size?(file)
+      file if File.size?(file)
+    end
+
+    def nix_prefetch_url(url)
+      file = cached_download(url)
+      return unless file
 
       sh(
         Bundix::NIX_PREFETCH_URL,
@@ -115,6 +122,21 @@ class Bundix
         return format_hash(hash) if hash
       end
 
+      nil
+    end
+
+    # Returns the licenses in the gemspec of the gem, from the bundler cache or
+    # else from `remote`. Returns nil if the gem is not available.
+    def fetch_licenses(spec, remote)
+      path = spec.source.caches
+        .map { |cache| File.join(cache, "#{spec.full_name}.gem") }
+        .find { |file| File.file?(file) }
+      path ||= cached_download("#{remote}/gems/#{spec.full_name}.gem") if remote
+      return unless path
+
+      Gem::Package.new(path).spec.licenses
+    rescue => ex
+      warn "Skipping the licenses of #{spec.full_name}: #{ex}"
       nil
     end
 

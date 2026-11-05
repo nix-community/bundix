@@ -5,7 +5,7 @@ require 'tmpdir'
 require 'base64'
 
 class Bundix
-  class FetcherTest < MiniTest::Test
+  class FetcherTest < Minitest::Test
     def test_download_with_credentials
       with_dir(bundler_credential: 'secret') do |dir|
         with_server do |port|

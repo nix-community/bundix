@@ -42,4 +42,20 @@ class TestConvert < Minitest::Test
       assert_equal("0.19.4", gemset.dig("thor", :version))
     end
   end
+
+  def test_transitive_dependency_groups
+    data = File.expand_path("data/transitive-groups", __dir__)
+    with_gemset(
+      :gemfile => "#{data}/Gemfile",
+      :lockfile => "#{data}/Gemfile.lock"
+    ) do |gemset|
+      groups = gemset.transform_values { |gem| gem[:groups].sort }
+
+      assert_equal([:default], groups["rack-test"])
+      assert_equal([:default, :development], groups["rack"])
+      %w[rspec rspec-core rspec-expectations rspec-mocks rspec-support diff-lcs].each do |name|
+        assert_equal([:test], groups[name], name)
+      end
+    end
+  end
 end

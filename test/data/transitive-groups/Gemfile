@@ -1,0 +1,12 @@
+source 'https://rubygems.org'
+
+gem 'rack-test'
+
+group :development do
+  # also a dependency of rack-test
+  gem 'rack'
+end
+
+group :test do
+  gem 'rspec'
+end

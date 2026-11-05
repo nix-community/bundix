@@ -42,4 +42,28 @@ class TestConvert < Minitest::Test
       assert_equal("0.19.4", gemset.dig("thor", :version))
     end
   end
+
+  # gemset.nix was written for an older Gemfile in which thor was in the test
+  # group, with other platforms. The cached source must be reused, but groups
+  # and platforms must follow the Gemfile.
+  def test_stale_cache_is_refreshed
+    data = File.expand_path("data/stale-cache", __dir__)
+    with_gemset(
+      :gemfile => "#{data}/Gemfile",
+      :lockfile => "#{data}/Gemfile.lock",
+      :gemset => "#{data}/gemset.nix"
+    ) do |gemset|
+      thor = gemset.fetch("thor")
+      assert_equal("cached_thor_hash", thor.dig("source", "sha256"))
+      assert_includes(thor[:groups], :default)
+      refute_includes(thor[:groups].map(&:to_s), "test")
+      assert_equal([], thor[:platforms])
+      refute(thor.key?("groups") || thor.key?("platforms"), "stale string keys must be dropped")
+
+      audit = gemset.fetch("bundler-audit")
+      assert_equal("cached_bundler_audit_hash", audit.dig("source", "sha256"))
+      assert_equal([:development], audit[:groups])
+      assert_equal(["thor"], audit["dependencies"])
+    end
+  end
 end

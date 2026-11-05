@@ -43,7 +43,8 @@ class Bundix
 
     # reverse so git comes last
     lock.specs.reverse_each.with_object({}) do |spec, gems|
-      gem = find_cached_spec(spec, cache) || convert_spec(spec, cache, dep_cache)
+      cached = find_cached_spec(spec, cache)
+      gem = cached ? refresh_cached_spec(cached, spec, dep_cache) : convert_spec(spec, cache, dep_cache)
       gems.merge!(gem)
 
       if spec.dependencies.any?
@@ -117,6 +118,19 @@ class Bundix
     }
 
     {name => cached} if cached
+  end
+
+  # The cache saves fetching the source to compute its hash. Groups and
+  # platforms are not properties of the gem but of how the Gemfile uses it
+  # (directly or through the gems depending on it), so they may have changed
+  # since the gemset was written even if the source did not: recompute them.
+  def refresh_cached_spec(cached, spec, dep_cache)
+    cached.transform_values do |attrs|
+      attrs
+        .reject { |key, _| %w[groups platforms].include?(key.to_s) }
+        .merge(platforms(spec, dep_cache))
+        .merge(groups(spec, dep_cache))
+    end
   end
 
   def build_depcache(lock)
